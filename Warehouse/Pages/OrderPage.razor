@@ -1,0 +1,238 @@
+@page "/OrderPage"
+@using Warehouse.Data
+@inject CustomerService custService
+@inject ProductRepo prodRepo
+@inject OrderRepo ordRepo
+@inject OrderLineRepo ordLineRepo
+@inject Microsoft.AspNetCore.Components.NavigationManager navManager
+
+
+<div class="container">
+    <div class="row bg-light">
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <td>Id</td>
+                    <td>Delivery Adress</td>
+                    <td>Customer</td>
+                    <td>Order Date</td>
+                    <td>Payment Completed</td>
+                    <td>Dispatched</td>
+                    <td>Restocking Date</td>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Orders.Any())
+                {
+                    @foreach (var ord in Orders)
+                    {
+                <tr>
+                    <td>@ord.Id</td>
+                    <td>@ord.DeliveryAdress</td>
+                    <td>@ord.CustomerId</td>
+                    <td>@ord.OrderDate</td>
+                    <td>@ord.PaymentCompleted</td>
+                    <td>@ord.Dispatched</td>
+                    <td>@GetRestockingDate(ord)</td>
+
+
+                    <td><button @onclick="@(() => SetOrderForUpdates(ord))">Edit</button></td>
+                    <td><button @onclick="(() => DeleteOrder(ord))">Delete </button></td>
+                </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td>No Orders available</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <td><button @onclick="@(() => DispatchOrders())">Dispatch Orders</button></td>
+
+    <select type=" text " id="status" class="form-control select-picker" @bind="@FilterFunction">
+        <option value="0">No Filter</option>
+        <option value="1">Dispatched </option>
+        <option value="2">Pending </option>
+    </select>
+    <button class="btn btn - info " type="button"
+            @onclick="FilterGUI">
+        Filter
+    </button>
+
+    <div class="row m-5">
+        <div class="col-5 bg-light m-2 justify-content.start">
+            <div class="p-3 mb-3 big-primary text-white text-center">
+                Add new Order
+            </div>
+            <EditForm Model="@newOrder" OnValidSubmit="@AddOrder">
+                <div class="form - group">
+                    <label for="deliveryadress">Delivery Adress</label>
+                    <input id="deliveryadresss" @bind-value="@newOrder.DeliveryAdress" type="text" class="form-control" />
+                </div>
+                <div class="form - group">
+                    <label for="cust">Customer Name</label>
+                    <select type="text" id="cust" class="form-control select-picker" @bind="newOrder.CustomerId">
+                        <option value="">Pick a Customer</option>
+                        @foreach (var cust in Customers)
+                        {
+                            <option value="@cust.Id">@cust.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="text-center p-3 mb-3">
+                    <button class="btn btn - danger" type="submit"> Create Order </button>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+
+    <div class="row m-5">
+        <div class="col-5 bg-light m-2 justify-content.start">
+            <div class="p-3 mb-3 big-primary text-white text-center">
+                Update Order
+            </div>
+            <EditForm Model="@updatedOrder">
+                <div class="form - group">
+                    <label for="deliveryadress">Delivery Adress</label>
+                    <input id="deliveryadresss" @bind-value="@updatedOrder.DeliveryAdress" type="text" class="form-control" />
+                </div>
+                <div class="form - group">
+                    <label for="paymentcompleted">Payment Completed</label>
+                    <input id="paymentcompleted" @bind-value="@updatedOrder.PaymentCompleted" type="checkbox" class="form-control" />
+                </div>
+                <div class="form - group">
+                    <label for="cust">Customer Name</label>
+                    <select type="text" id="cust" class="form-control select-picker" @bind="updatedOrder.CustomerId">
+                        <option value="">Pick a Customer</option>
+                        @foreach (var cust in Customers)
+                        {
+                            <option value="@cust.Id">@cust.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="text-center p-3 mb-3">
+                    <button class="btn btn - danger" @onclick="UpdateOrder"> Update Order </button>
+                </div>
+                <div class="text-center p-3 mb-3">
+                    <button class="btn btn - danger" @onclick="EditOrder"> Edit OrderLines </button>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+</div>
+
+@code
+{
+    List<Order> Orders;
+    List<Order> AllOrders;
+
+    List<Customer> Customers;
+    List<Product> Products;
+    List<OrderLine> OrderLines;
+
+
+    protected override async Task OnInitializedAsync()//error på metoden ska vi ha ett annat namn?
+    {
+        AllOrders = await ordRepo.GetOrdersAsync();
+        Orders = await ordRepo.GetOrdersAsync();//Han har service ist för orderservice vad är det i vårt fall?
+        Customers = await custService.GetCustomersAsync();
+        Products = await prodRepo.GetProductsAsync();
+        OrderLines = await ordLineRepo.GetOrderLinesAsync();
+    }
+
+    private async Task UpdateGUI()
+    {
+        Orders = await ordRepo.GetOrdersAsync();
+    }
+
+    Order newOrder = new Order();
+    private async Task AddOrder()
+    {
+        await ordRepo.AddOrderAsync(newOrder);
+        await UpdateGUI();
+        OrderLineNavigation(newOrder.Id);
+        newOrder = new Order();
+    }
+
+    Order updatedOrder = new Order();
+    private void SetOrderForUpdates(Order selected)
+    {
+        updatedOrder = selected;
+    }
+
+    private void EditOrder()
+    {
+        if(updatedOrder.Dispatched== false)
+        {
+            OrderLineNavigation(updatedOrder.Id);
+        }
+        else
+        {
+            //Vaaaad ska jag göra här.
+        }
+
+    }
+
+    private async Task UpdateOrder()
+    {
+        await ordRepo.UpdateOrderAsync(updatedOrder);
+        await UpdateGUI();
+        //OrderLineNavigation(updatedOrder.Id);
+        updatedOrder = new Order();
+    }
+
+    public string Filter { get; set; }
+    public string FilterFunction { get; set; }
+
+    private void FilterGUI()
+    {
+
+        switch (FilterFunction)
+        {
+            case "0":
+                Orders = AllOrders;
+
+                break;
+            case "1":
+                Orders = AllOrders;
+                Orders = ordRepo.DisplayDispatched(Orders);
+
+                break;
+            case "2":
+
+                Orders = AllOrders;
+                Orders = ordRepo.DisplayPending(Orders);
+
+                break;
+        }
+    }
+    private void OrderLineNavigation(int OrderId)
+    {
+        navManager.NavigateTo($"/OrderLinePage/{OrderId}");
+    }
+
+
+    private void DispatchOrders()
+    {
+        ordRepo.DispatchOrders(AllOrders,Products,OrderLines);
+
+    }
+
+    private async void DeleteOrder(Order ord)
+    {
+        await ordRepo.DeleteOrdersAsync(ord);
+        Orders = await ordRepo.GetOrdersAsync();
+        UpdateGUI();
+    }
+
+    private string GetRestockingDate(Order ord)
+    {
+        string Restock = ordRepo.GetRestockingDate(ord, OrderLines, Products);
+        return Restock;
+    }
+
+}

@@ -1,0 +1,189 @@
+@page "/CustomerPage"
+@using Warehouse.Data
+@inject CustomerService custService
+@inject OrderRepo ordRepo
+
+
+
+<div class="container">
+    <div class="row bg-light">
+
+
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Customer information</th>
+                    <td>Name</td>
+                    <td>Phone</td>
+                    <td>Email</td>
+
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Customers.Any())
+                {
+                    <tr>No customers in the catalouge</tr>
+                }
+
+                @foreach (var cust in Customers)
+                {
+                    <tr @onclick="(() => SetCustomerForUpdate(cust))">
+                        <td>@cust.Name</td>
+                        <td>@cust.Phone</td>
+                        <td>@cust.Email</td>
+
+                        <td><button @onclick="(() => DeleteCustomer(cust))">Delete </button></td>
+                        <td><button @onclick="(() => ShowDispOrders(cust))">Show Dispatched Orders </button></td>
+                        <td><button @onclick="(() => ShowPendOrders(cust))">Show Pending Orders </button></td>
+
+                    </tr>
+                }
+
+
+            </tbody>
+        </table>
+
+
+
+        <EditForm Model="@updatedCustomer" OnValidSubmit="(() => { UpdateCustomer(); UpdateGUI(); })">
+        <DataAnnotationsValidator/>
+        <ValidationSummary/>
+            <div class="form-group">
+                <label for="Name">Customer Name</label>
+                <input @bind-value="@updatedCustomer.Name" type="text" />
+            </div>
+            <div class="form-group">
+                <label for="Emmail">Customer Mail</label>
+                <input @bind-value="@updatedCustomer.Email" type="text" />
+            </div>
+            <div class="form-group">
+                <label for="Phone">Customer ¨Phone number</label>
+                <input @bind-value="@updatedCustomer.Phone" type="number" />
+            </div>
+            <button class="btn btn-info" type="submit">Update Customer</button>
+        </EditForm>
+
+        <EditForm Model="@newCustomer" OnValidSubmit="@AddCustomer">
+        <DataAnnotationsValidator/>
+        <ValidationSummary/>
+            <div class="form - group">
+                <label for="Name">Customer name</label>
+                <input @bind-value="@newCustomer.Name" type="text" />
+            </div>
+            <div class="form - group">
+                <label for="Phone">Customer phone number</label>
+                <input @bind-value="@newCustomer.Phone" type="number" />
+            </div>
+            <div class="form - group">
+                <label for="Email">Customer mail</label>
+                <input @bind-value="@newCustomer.Email" type="text" />
+            </div>
+            <button class="btn btn-info" type="submit"> Add a new customer </button>
+        </EditForm>
+
+        <table class="table">
+            <thead>
+                <tr>
+                    <td>Id</td>
+                    <td>Delivery Adress</td>
+                    <td>Customer</td>
+                    <td>Order Date</td>
+                    <td>Payment Completed</td>
+                    <td>Dispatched</td>
+                </tr>
+
+            </thead>
+            <tbody>
+                @if (Orders.Any())
+                {
+                    @foreach (var ord in Orders)
+                    {
+                        <tr>
+                            <td>@ord.Id</td>
+                            <td>@ord.DeliveryAdress</td>
+                            <td>@ord.CustomerId</td>
+                            <td>@ord.OrderDate</td>
+                            <td>@ord.PaymentCompleted</td>
+                            <td>@ord.Dispatched</td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td>No Orders available</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+    </div>
+    </div>
+
+
+
+        @code
+{
+            List<Customer> Customers;
+            List<Order> Orders;
+            List<Order> AllOrders;
+
+            [Parameter]
+            public int OrderId { get; set; }
+
+            protected override async Task OnInitializedAsync()//error på metoden ska vi ha ett annat namn?
+            {
+                Orders = await ordRepo.GetOrdersAsync();                                               // custService.changeEvent += UpdateGUI;
+
+                Customers = await custService.GetCustomersAsync();//Han har service ist för orderservice vad är det i vårt fall?
+                AllOrders = await ordRepo.GetOrdersAsync();                                               // custService.changeEvent += UpdateGUI;
+            }
+
+            Customer updatedCustomer = new Customer();
+            private void SetCustomerForUpdate(Customer selected)
+            {
+                updatedCustomer = selected;
+            }
+
+            private async void UpdateCustomer()
+            {
+                await custService.UpdateCustomerAsync(updatedCustomer);
+                UpdateGUI();
+            }
+
+            Customer newCustomer = new Customer();
+            private async void AddCustomer()
+            {
+
+                await custService.AddCustomerAsync(newCustomer);
+                newCustomer = new Customer();
+                UpdateGUI();
+            }
+
+            private async void DeleteCustomer(Customer cust)
+            {
+                await custService.DeleteCustomersAsync(cust);
+                Customers = await custService.GetCustomersAsync();
+                UpdateGUI();
+            }
+
+
+
+            private async void UpdateGUI()
+            {
+
+                await custService.GetCustomersAsync();
+            }
+            private void ShowDispOrders(Customer cust)
+            {
+                Orders = AllOrders;
+                Orders = custService.DisplayDispatched(Orders, cust.Id);
+            }
+            private void ShowPendOrders(Customer cust)
+            {
+                Orders = AllOrders;
+                Orders = custService.DisplayPending(Orders, cust.Id);
+            }
+
+
+        }

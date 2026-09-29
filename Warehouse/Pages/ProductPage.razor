@@ -1,0 +1,393 @@
+@page "/ProductPage"
+@using Warehouse.Data
+@using System;
+@using System.Collections.Generic;
+@using System.Linq;
+@using System.Threading.Tasks;
+@inject CustomerService custService
+@inject ProductRepo prodRepo
+@inject NavigationManager UriHelper
+
+<h3>Some Component</h3>
+<div>
+    <table class="table">
+        <thead>
+            <tr>
+                <td>Id</td>
+                <td>Name</td>
+                <td>Price</td>
+                <td>Description</td>
+                <td>Stock</td>
+                <td>Restocking Date</td>
+                <th>Edit</th>
+                <th>Remove</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var prod in Products)
+            {
+                <tr>
+                    <td>@prod.Id</td>
+
+                    <td>@prod.Name</td>
+                    <td>@prod.Price</td>
+                    <td>@prod.Description</td>
+                    <td>@prod.Stock</td>
+
+                    @if (prod.Stock > 0 && prod.RestockingDate.ToString("dd/MM/yyyy") == "01-01-0001")
+                    {
+                        <td>In stock</td>
+                    }
+                    else if (prod.RestockingDate.ToString("dd/MM/yyyy") == "01-01-0001")
+                    {
+                        <td>No restocking date set</td>
+                    }
+                    else
+                    {
+                        <td>@prod.RestockingDate.ToString("dd/MM/yyyy")</td>
+                    }
+
+
+
+                    <!--@if (prod.Stock == 0 && prod.RestockingDate.ToString("dd/MM/yyyy") == "01/01/0001")
+                    {
+                        <td>Restocking date not set</td>
+                    }
+                    else if (prod.RestockingDate.ToString("dd/MM/yyyy") == "01/01/0001" || prod.RestockingDate < DateTime.Now)
+                    {
+                        <td>In stock</td>
+                    }
+                    else
+                    {
+                        <td>@prod.RestockingDate.ToString("dd/MM/yyyy")</td>
+                    }
+                    -->
+
+                    <td><button @onclick="@(() => SetProductForUpdates(prod))">Edit</button></td>
+                    <td><button @onclick="@(() => DeleteProduct(@prod.Id))">Delete</button></td>
+
+                </tr>
+            }
+        </tbody>
+    </table>
+    <select type=" text " id="status" class="form-control select-picker" @bind="@FilterFunction">
+        <option value="0">All Products</option>
+        <option value="1">Out of Stock </option>
+
+    </select>
+    <button class="btn btn - info " type="button"
+            @onclick="FilterGUI">
+        Filter
+    </button>
+</div>
+<div class="row m-5">
+    <div class="col-5 bg-light m-2 justify-content.start">
+        <div class="p-3 mb-3 big-primary text-white text-center">
+            Add new Product
+        </div>
+        <EditForm Model="@newProduct" OnValidSubmit="@AddProduct">
+        <DataAnnotationsValidator/>
+        <ValidationSummary/>
+            <div class="form - group">
+                <label for="name"> Product name </label>
+                <input id="name" @bind-value="@newProduct.Name" type="text" class="form-control" />
+            </div>
+            <div class="form - group">
+                <label for="price">Product price</label>
+                <input id="price" @bind-value="@newProduct.Price" type="number" min="0" class="form-control" />
+            </div>
+            <div class="form - group">
+                <label for="description">Product Description</label>
+                <input id="description" @bind-value="@newProduct.Description" type="text" class="form-control" />
+            </div>
+            <div class="form - group">
+                <label for="stock">Product Stock</label>
+                <input id="stock" @bind-value="@newProduct.Stock" type="number" min="0" class="form-control" />
+            </div>
+
+      
+            <div class="form - group">
+                @if (newProduct.RestockingDate.ToString("dd/MM/yyyy") == "01/01/0001")
+                {
+                    
+                    <label>Product Restocking Date (Leave empty if product is in stock)</label>
+                    <input @bind-value="@newProduct.RestockingDate" type="text" class="form-control" />
+                }
+                else
+                {
+                    <label for="restockingdate">Product Restocking Date (Leave empty if product is in stock)</label>
+                    <input id="restockingdate" @bind-value="@newProduct.RestockingDate" type="text" class="form-control" />
+                }
+           
+            </div>
+
+            <div class="text-center p-3 mb-3">
+                <button class="btn btn - danger" type="submit"> Add Product </button>
+            </div>
+        </EditForm>
+    </div>
+</div>
+
+<EditForm Model="@updatedProduct">
+<DataAnnotationsValidator/>
+<ValidationSummary/>
+    <div class="form - group">
+        <label for="name"> Product name </label>
+        <input id="name" @bind-value="@updatedProduct.Name" type="text" class="form-control" />
+    </div>
+    <div class="form - group">
+        <label for="price">Product price</label>
+        <input id="price" @bind-value="@updatedProduct.Price" type="number" class="form-control" />
+    </div>
+    <div class="form - group">
+        <label for="description">Product Description</label>
+        <input id="description" @bind-value="@updatedProduct.Description" type="text" class="form-control" />
+    </div>
+    <div class="form - group">
+        <label for="stock">Product Stock</label>
+        <input id="stock" @bind-value="@updatedProduct.Stock" type="number" class="form-control" />
+    </div>
+    <div class="form - group">
+       
+            <label for="restockingdate">Product Restocking Date (Leave empty if product is in stock)</label>
+            <input @bind-value="@updatedProduct.RestockingDate" type="text" class="form-control" />
+  
+       
+    </div>
+
+
+    <button class="btn btn-info" @onclick="UpdateProduct"> Update Product </button>
+</EditForm>
+
+
+
+@code { 
+    List<Product> Products;
+    List<Product> AllProducts;
+
+    protected override async Task OnInitializedAsync()//error på metoden ska vi ha ett annat namn?
+    {
+        Products = await prodRepo.GetProductsAsync();//Han har service ist för orderservice vad är det i vårt fall?
+        AllProducts = await prodRepo.GetProductsAsync();
+    }
+
+    private async Task UpdateGUI()
+    {
+        Products = await prodRepo.GetProductsAsync();
+    }
+
+    Product newProduct = new Product();
+    private async Task AddProduct()
+    {
+        await prodRepo.AddProductAsync(newProduct);
+        newProduct = new Product();
+        await UpdateGUI();
+    }
+    private async Task DeleteProduct(int id)
+    {
+
+        await prodRepo.DeleteProductAsync(id);
+        await UpdateGUI();
+    }
+    Product updatedProduct = new Product();
+    private void SetProductForUpdates(Product selected)
+    {
+        updatedProduct = selected;
+    }
+    private async Task UpdateProduct()
+    {
+
+        await prodRepo.UpdateProductAsync(updatedProduct);
+        await UpdateGUI();
+    }
+    private void EditProduct(int id)
+    {
+        UriHelper.NavigateTo("editproduct");
+
+
+        //Uppdatera GUI
+    }
+
+    public string Filter { get; set; }
+    public string FilterFunction { get; set; }
+
+    private void FilterGUI()
+    {
+
+        switch (FilterFunction)
+        {
+            case "0":
+                Products = AllProducts;
+
+                break;
+            case "1":
+                Products = AllProducts;
+                Products = prodRepo.DisplayEmpty(Products);
+                break;
+        }
+    }
+
+    }
+
+
+
+<!--
+<h3>Some Component</h3>
+<div>
+    <table class="table">
+        <thead>
+            <tr>
+                <td>Id</td>
+                <td>Name</td>
+                <td>Price</td>
+                <td>Description</td>
+                <td>Stock</td>
+                <th>Edit</th>
+                <th>Remove</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var prod in Products)
+            {
+                <tr>
+                    <td>@prod.Id</td>
+
+                    <td>@prod.Name</td>
+                    <td>@prod.Price</td>
+                    <td>@prod.Name</td>
+                    <td>@prod.Description</td>
+                    <td>@prod.Stock</td>
+
+                    <td><button @onclick="@(() => SetProductForUpdates(prod))">Edit</button></td>
+                    <td><button @onclick="@(() => DeleteProduct(@prod.Id))">Delete</button></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+<div class="row m-5">
+    <div class="col-5 bg-light m-2 justify-content.start">
+        <div class="p-3 mb-3 big-primary text-white text-center">
+            Add new Product
+        </div>
+
+        <EditForm Model="@newProduct" OnValidSubmit="@AddProduct">
+        <DataAnnotationsValidator/>
+        <ValidationSummary/>
+            <div class="form - group">
+                <label for="name"> Product name </label>
+                <input id="name" @bind-value="@newProduct.Name" type="text" class="form-control" />
+            </div>
+            <div class="form - group">
+                <label for="price">Product price</label>
+                <input id="price" @bind-value="@newProduct.Price" type="number" class="form-control" />
+            </div>
+            <div class="form - group">
+                <label for="description">Product Description</label>
+                <input id="description" @bind-value="@newProduct.Description" type="text" class="form-control" />
+            </div>
+            <div class="form - group">
+                <label for="stock">Product Stock</label>
+                <input id="stock" @bind-value="@newProduct.Stock" type="number" class="form-control" />
+            </div>
+
+            <div class="form - group">
+                <label for="id">Product Id</label>
+                <input id="id" @bind-value="@newProduct.Id" type="number" class="form-control" />
+            </div>
+            <div class="form - group">
+                <label for="restockingdate">Product Restocking Date</label>
+                <input id="restockingdate" @bind-value="@newProduct.RestockingDate" type="number" class="form-control" />
+            </div>
+
+            <div class="text-center p-3 mb-3">
+                <button class="btn btn - danger" type="submit"> Add Product </button>
+            </div>
+        </EditForm>
+    </div>
+</div>
+
+<EditForm Model="@updatedProduct"> OnValidSubmit="@AddProduct">
+<DataAnnotationsValidator/>
+<ValidationSummary/>
+    <div class="form - group">
+        <label for="name"> Product name </label>
+        <input id="name" @bind-value="@updatedProduct.Name" type="text" class="form-control" />
+    </div>
+    <div class="form - group">
+        <label for="price">Product price</label>
+        <input id="price" @bind-value="@updatedProduct.Price" type="number" class="form-control" />
+    </div>
+    <div class="form - group">
+        <label for="description">Product Description</label>
+        <input id="description" @bind-value="@updatedProduct.Description" type="text" class="form-control" />
+    </div>
+    <div class="form - group">
+        <label for="stock">Product Stock</label>
+        <input id="stock" @bind-value="@updatedProduct.Stock" type="number" class="form-control" />
+    </div>
+
+    <div class="form - group">
+        <label for="id">Product Id</label>
+        <input id="id" @bind-value="@updatedProduct.Id" type="number" class="form-control" />
+    </div>
+    <div class="form - group">
+        <label for="restockingdate">Product Restocking Date</label>
+        <input id="restockingdate" @bind-value="@updatedProduct.RestockingDate" type="number" class="form-control" />
+    </div>
+    
+    
+    <button class="btn btn-info" @onclick="UpdateProduct"> Update Product </button>
+</EditForm>
+
+@code {
+
+    List<Product> Products;
+
+    protected override async Task OnInitializedAsync()//error på metoden ska vi ha ett annat namn?
+    {
+        Products = await prodService.GetProductsAsync();//Han har service ist för orderservice vad är det i vårt fall?
+        
+    }
+
+    private async Task UpdateGUI()
+    {
+        Products = await prodService.GetProductsAsync();
+    }
+
+    Product newProduct = new Product();
+    private async Task AddProduct()
+    {
+        await prodService.AddProductAsync(newProduct);
+        newProduct = new Product();
+        await UpdateGUI();
+    }
+    private async Task DeleteProduct(int id)
+    {
+
+        await prodService.DeleteProductAsync(id);
+        await UpdateGUI();
+    }
+    Product updatedProduct = new Product();
+    private void SetProductForUpdates(Product selected)
+    {
+        updatedProduct = selected;
+    }
+    private async Task UpdateProduct()
+    {
+
+        await prodService.UpdateProductAsync(updatedProduct);
+        await UpdateGUI();
+    }
+    private void EditProduct(int id)
+    {
+        UriHelper.NavigateTo("editproduct");
+
+
+        //Uppdatera GUI
+    }
+
+
+}
+
+-->

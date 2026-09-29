@@ -1,0 +1,101 @@
+﻿@page "/"
+@using Warehouse.Data
+@inject CustomerService custService
+@inject ProductRepo prodService
+
+
+<div class="container">
+    <div class="row bg-light">
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <td>Price</td>
+                    <td>Name</td>
+                    <td>Description</td>
+                    <td>Stock</td>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Products.Any())
+                {
+                    @foreach (var prod in Products)
+                    {
+                        <tr>
+                            <td>@prod.Price</td>
+                            <td>@prod.Name</td>
+                            <td>@prod.Description</td>
+                            <td>@prod.Stock</td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td>No Products available</td>
+                    </tr>
+                }
+
+            </tbody>
+        </table>
+    </div>
+
+
+    <div class="row m-5">
+        <div class="col-5 bg-light m-2 justify-content.start">
+            <div class="p-3 mb-3 big-primary text-white text-center">
+                Add new Product
+            </div>
+            <EditForm Model="@newProduct" OnValidSubmit="@AddProduct">
+                <div class="form - group">
+                    <label for="name"> Product name </label>
+                    <input id="name" @bind-value="@newProduct.Name" type="text" class="form-control" />
+                </div>
+                <div class="form - group">
+                    <label for="price">Product price</label>
+                    <input id="price" @bind-value="@newProduct.Price" type="number" class="form-control" />
+                </div>
+                <div class="form - group">
+                    <label for="description">Product Description</label>
+                    <input id="description" @bind-value="@newProduct.Description" type="text" class="form-control" />
+                </div>
+                <div class="form - group">
+                    <label for="stock">Product Stock</label>
+                    <input id="stock" @bind-value="@newProduct.Stock" type="number" class="form-control" />
+                </div>
+
+                <div class="form - group">
+                    <label for="id">Product Id</label>
+                    <input id="id" @bind-value="@newProduct.Id" type="number" class="form-control" />
+                </div>
+                <div class="form - group">
+                    <label for="restockingdate">Product Restocking Date</label>
+                    <input id="restockingdate" @bind-value="@newProduct.RestockingDate" type="number" class="form-control" />
+                </div>
+
+                <div class="text-center p-3 mb-3">
+                    <button class="btn btn - danger" type="submit"> Add Product </button>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+</div>
+
+
+@code
+{
+    List<Product> Products;
+
+    protected override async Task OnInitializedAsync()//error på metoden ska vi ha ett annat namn?
+    {
+        Products = await prodService.GetProductsAsync();//Han har service ist för orderservice vad är det i vårt fall?
+    }
+
+    Product newProduct = new Product();
+    private async Task AddProduct()
+    {
+        await prodService.AddProductAsync(newProduct);
+        newProduct = new Product();
+        //Uppdatera GUI
+    }
+
+}

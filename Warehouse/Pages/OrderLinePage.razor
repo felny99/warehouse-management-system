@@ -1,0 +1,115 @@
+@page "/OrderLinePage/{OrderId:int}"
+@using Warehouse.Data
+@inject CustomerService custService
+@inject ProductRepo prodRepo
+@inject OrderRepo ordRepo
+@inject OrderLineRepo ordLineRepo
+
+
+
+<div class="container">
+    <div class="row bg-light">
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <td>Product</td>
+                    <td>Quantity</td>
+                </tr>
+            </thead>
+            <tbody>
+
+
+                @if (OrderLines.Any())
+                {
+                    
+                    foreach (var ordLine in OrderLines)
+                    {
+                        @if(ordLine.OrderId == OrderId)
+                        {
+
+                <tr>
+                    <td>@ordLine.Product.Name</td>
+                    <td>@ordLine.Quantity</td>
+                </tr>
+
+                        }
+                    }
+                }
+
+                else
+                {
+            <tr>
+                <td>No OrderLines made</td>
+            </tr>
+                }
+
+
+            </tbody>
+        </table>
+    </div>
+
+    <div class="row m-5">
+        <div class="col-5 bg-light m-2 justify-content.start">
+            <div class="p-3 mb-3 big-primary text-white text-center">
+                Add new Order Line
+            </div>
+            <EditForm Model="@newOrderLine" OnValidSubmit="@AddOrderLine">
+                <div class="form - group">
+                    <label for="quantity">Quantity</label>
+                    <input id="quantity" @bind-value="@newOrderLine.Quantity" type="number" class="form-control" />
+                </div>
+                <div class="form - group">
+                    <label for="prod">Product</label>
+                    <select type="text" id="prod" class="form-control select-picker" @bind="newOrderLine.ProductId">
+                        <option value="">Pick a Product</option>
+                        @foreach (var prod in Products)
+                        {
+                            <option value="@prod.Id">@prod.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="text-center p-3 mb-3">
+                    <button class="btn btn - danger" type="submit"> Add OrderLine </button>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+</div>
+
+@code
+{
+    List<Order> Orders;
+    List<Customer> Customers;
+    List<OrderLine> OrderLines;
+    List<Product> Products;
+
+    [Parameter]
+    public int OrderId { get; set; }
+
+    Order newOrder = new Order();//Se till att detta är rätt order via orderID som skikas in.
+
+
+
+    protected override async Task OnInitializedAsync()//error på metoden ska vi ha ett annat namn?
+    {
+        Orders = await ordRepo.GetOrdersAsync();//Han har service ist för orderservice vad är det i vårt fall?
+        Customers = await custService.GetCustomersAsync();
+        OrderLines = await ordLineRepo.GetOrderLinesAsync();
+        Products = await prodRepo.GetProductsAsync();
+
+    }
+
+    private async Task UpdateGUI()
+    {
+        OrderLines = await ordLineRepo.GetOrderLinesAsync();
+    }
+
+    OrderLine newOrderLine = new OrderLine();
+
+    private async Task AddOrderLine()
+    {
+        await ordLineRepo.AddOrderLineAsync(newOrderLine, OrderId);
+        newOrderLine = new OrderLine();
+        await UpdateGUI();
+    }
+}

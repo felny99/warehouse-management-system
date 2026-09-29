@@ -1,0 +1,20 @@
+# Visual Studio
+.vs/
+*.csproj.user
+*.suo
+
+# .NET build output
+**/bin/
+**/obj/
+
+# Local database
+**/WH-Base.db
+*.db-wal
+*.db-shm
+
+# Logs and temporary files
+*.log
+
+# Operating system metadata
+Thumbs.db
+.DS_Store
